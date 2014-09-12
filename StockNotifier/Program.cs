@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Configuration;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Text;
@@ -144,14 +145,14 @@ namespace StockNotifier
                     {
                         string storeName = store.address.address;
                         NotifyAvailability(storeName);
-                        Console.WriteLine("iPhone Available at {0}!!", storeName);
+                        Console.WriteLine("[0] iPhone Available at {1}!!", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")), storeName);
                         foundProduct = true;
                     }
                 }
 
                 if (!foundProduct)
                 {
-                    Console.WriteLine("No iPhones found this time.");
+                    Console.WriteLine("[{0}] No iPhones found this time.", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")));
                 }
             }
         }
