@@ -18,7 +18,9 @@ namespace StockNotifier
         private static bool _hasAcknowledgedExit = false;
         private static int? _intervalSeconds;
         private static int? _numberToSearch;
-        private static string _pushalotKey;
+        private static string _pushApiKey;
+        private static INotifier _notifier;
+        private static string _productName;
 
         public static int Main(string[] args)
         {
@@ -144,41 +146,29 @@ namespace StockNotifier
                     if (availability.storeSelectionEnabled.Value || availability.pickupSearchQuote != "Unavailable for Pickup")
                     {
                         string storeName = store.address.address;
-                        NotifyAvailability(storeName);
-                        Console.WriteLine("[0] iPhone Available at {1}!!", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")), storeName);
+                        if (_notifier != null)
+                        {
+                            _notifier.NotifyAvailability(_pushApiKey, _productName, storeName);
+                        }
+                        Console.WriteLine("[{0}] {1} Available at {2}!!", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")), _productName, storeName);
                         foundProduct = true;
                     }
                 }
 
                 if (!foundProduct)
                 {
-                    Console.WriteLine("[{0}] No iPhones found this time.", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")));
+                    Console.WriteLine("[{0}] No {1} found this time.", DateTime.Now.ToString("g", CultureInfo.CreateSpecificCulture("en-us")), _productName);
                 }
-            }
-        }
-
-        private static void NotifyAvailability(string storeName)
-        {
-            using (var client = new WebClient())
-            {
-                var payload = JsonConvert.SerializeObject(new
-                {
-                    AuthorizationToken = _pushalotKey,
-                    Body = "Available at " + storeName + ".",
-                    Source = "iPhone Stock Notifier",
-                    Title = "iPhone Available"
-                });
-
-                client.Headers[HttpRequestHeader.ContentType] = "application/json";
-                client.UploadString("https://pushalot.com/api/sendmessage", payload);
             }
         }
 
         private static void SetStartupParameters()
         {
+            _productName = ConfigurationManager.AppSettings["ProductName"];
             _modelNumber = ConfigurationManager.AppSettings["ModelNumber"];
             _zipCode = ConfigurationManager.AppSettings["ZipCode"];
-            _pushalotKey = ConfigurationManager.AppSettings["PushalotKey"];
+            _pushApiKey = ConfigurationManager.AppSettings["PushApiKey"];
+            string pushMethod = ConfigurationManager.AppSettings["PushMethod"];
             string intervalSecondsText = ConfigurationManager.AppSettings["IntervalSeconds"];
             int intervalSeconds;
             if (Int32.TryParse(intervalSecondsText, out intervalSeconds))
@@ -199,8 +189,13 @@ namespace StockNotifier
                 throw new FriendlyException("You must specify the zip code, model number, number of stores to search, and interval seconds in the application configuration file.");
             }
 
+            _notifier = NotificationFactory.CreateNotifier(pushMethod);
+
+            Console.WriteLine("Product Name: {0}", _productName);
             Console.WriteLine("Model #: {0}", _modelNumber);
             Console.WriteLine("Zip Code: {0}", _zipCode);
+            Console.WriteLine("Push Method: {0}", pushMethod ?? "Not Present");
+            Console.WriteLine("Notifier from Push Method: {0}", _notifier != null ? _notifier.Name : "Not Present");
         }
     }
 }
